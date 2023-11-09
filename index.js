@@ -31,6 +31,7 @@ async function run() {
         await client.connect();
 
         const jobsCollection = client.db('jobsHunter').collection('jobs');
+        const applyJobsCollection = client.db('jobsHunter').collection('applyJobs');
 
         app.get('/jobs', async (req, res) => {
             const cursor = jobsCollection.find()
@@ -45,6 +46,38 @@ async function run() {
             res.send(result);
         })
 
+        app.post('/jobs', async(req,res)=>{
+            const addJob = req.body
+            console.log(addJob);
+            const result = await jobsCollection.insertOne(addJob)
+            res.send(result);
+        })
+
+        //apply jobs
+        app.get('/applyJobs', async (req, res) => {
+            console.log(req.query.email);
+            let query = {}
+            if (req.query?.email) {
+                query = { email: req.query.email }
+            }
+            const result = await applyJobsCollection.find(query).toArray()
+            res.send(result);
+        })
+
+        app.post('/applyJobs', async (req, res) => {
+            const applyJobs = req.body
+            console.log(applyJobs);
+            const result = await applyJobsCollection.insertOne(applyJobs)
+            res.send(result);
+        })
+
+        //delete
+        app.delete('/applyJobs/:id', async(req,res)=>{
+            const id = req.params.id
+            const query = {_id: new ObjectId(id)}
+            const result = await applyJobsCollection.deleteOne(query)
+            res.send(result)
+        })
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
