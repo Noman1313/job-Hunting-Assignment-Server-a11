@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 require('dotenv').config()
@@ -7,7 +8,12 @@ const port = process.env.PORT || 5000;
 
 
 //middleware
-app.use(cors());
+app.use(cors({
+    origin: [
+        'http://localhost:5173'
+    ],
+    credentials: true
+}));
 app.use(express.json());
 
 // jobHunter
@@ -33,6 +39,26 @@ async function run() {
         const jobsCollection = client.db('jobsHunter').collection('jobs');
         const applyJobsCollection = client.db('jobsHunter').collection('applyJobs');
 
+        //auth api
+        app.post('/jwt', async (req, res) => {
+            const user = req.body;
+            console.log('user for tokennnn', user);
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+            res.cookie('token', token,{
+                httpOnly: true,
+                secure: true,
+                sameSite: 'none'
+            })
+            .send({ success: true })
+        })
+
+        app.post('/logout', async(req,res)=>{
+            const user = req.body;
+            console.log('logout user', user);
+            res.clearCookie('token', {maxAge: 0}).send({success: true})
+        })
+
+        //jobs api
         app.get('/jobs', async (req, res) => {
             const cursor = jobsCollection.find()
             const result = await cursor.toArray()
@@ -46,7 +72,7 @@ async function run() {
             res.send(result);
         })
 
-        app.post('/jobs', async(req,res)=>{
+        app.post('/jobs', async (req, res) => {
             const addJob = req.body
             console.log(addJob);
             const result = await jobsCollection.insertOne(addJob)
@@ -72,9 +98,9 @@ async function run() {
         })
 
         //delete
-        app.delete('/applyJobs/:id', async(req,res)=>{
+        app.delete('/applyJobs/:id', async (req, res) => {
             const id = req.params.id
-            const query = {_id: new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const result = await applyJobsCollection.deleteOne(query)
             res.send(result)
         })
